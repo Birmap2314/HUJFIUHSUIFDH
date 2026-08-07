@@ -1,0 +1,730 @@
+--!strict
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Stats = game:GetService("Stats")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+local CONFIG = {
+	Channel = "Beta",
+	LogoAsset = "rbxassetid://129691721280832",
+	Accent = Color3.fromRGB(156, 126, 255),
+	Position = UDim2.fromOffset(18, 18),
+	Scale = 1.0,
+	EdgeMargin = 4,
+	ShowCoordinates = true,
+	ShowBandwidth = true,
+	Draggable = true,
+}
+
+type IconBuilder = (Color3) -> Frame
+
+type PillRecord = {
+	row: Frame,
+	pill: Frame,
+	icon: Instance?,
+	value: Instance?,
+}
+
+local BADGE_SIZE = 64
+local LOGO_SIZE = 60
+local PILL_HEIGHT = 26
+local SIDE_HYSTERESIS = 12
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local oldGui = playerGui:FindFirstChild("ApplePremiumWatermark")
+if oldGui then
+	oldGui:Destroy()
+end
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "ApplePremiumWatermark"
+gui.IgnoreGuiInset = true
+gui.ResetOnSpawn = false
+gui.DisplayOrder = 999999
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.Parent = playerGui
+
+local holderRest = CONFIG.Position + UDim2.fromOffset(-2, -2)
+
+local holder = Instance.new("CanvasGroup")
+holder.Name = "Watermark"
+holder.Position = holderRest + UDim2.fromOffset(0, -16)
+holder.AutomaticSize = Enum.AutomaticSize.X
+holder.Size = UDim2.fromOffset(0, BADGE_SIZE)
+holder.BackgroundTransparency = 1
+holder.GroupTransparency = 1
+holder.Parent = gui
+
+local holderPadding = Instance.new("UIPadding")
+holderPadding.PaddingTop = UDim.new(0, 2)
+holderPadding.PaddingBottom = UDim.new(0, 2)
+holderPadding.PaddingLeft = UDim.new(0, 2)
+holderPadding.PaddingRight = UDim.new(0, 2)
+holderPadding.Parent = holder
+
+local scale = Instance.new("UIScale")
+scale.Scale = CONFIG.Scale * 0.92
+scale.Parent = holder
+
+local rootLayout = Instance.new("UIListLayout")
+rootLayout.FillDirection = Enum.FillDirection.Horizontal
+rootLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+rootLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+rootLayout.Padding = UDim.new(0, 10)
+rootLayout.SortOrder = Enum.SortOrder.LayoutOrder
+rootLayout.Parent = holder
+
+local badge = Instance.new("Frame")
+badge.Name = "LogoBadge"
+badge.LayoutOrder = 0
+badge.Size = UDim2.fromOffset(BADGE_SIZE, BADGE_SIZE)
+badge.BackgroundColor3 = Color3.fromRGB(24, 22, 34)
+badge.BorderSizePixel = 0
+badge.ClipsDescendants = true
+badge.Parent = holder
+
+local badgeScale = Instance.new("UIScale")
+badgeScale.Scale = 1
+badgeScale.Parent = badge
+
+local badgeCorner = Instance.new("UICorner")
+badgeCorner.CornerRadius = UDim.new(0, 18)
+badgeCorner.Parent = badge
+
+local badgeGradient = Instance.new("UIGradient")
+badgeGradient.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(64, 56, 96)),
+	ColorSequenceKeypoint.new(0.55, Color3.fromRGB(26, 23, 40)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(8, 8, 12)),
+})
+badgeGradient.Rotation = 90
+badgeGradient.Parent = badge
+
+local logo = Instance.new("ImageLabel")
+logo.Name = "Logo"
+logo.AnchorPoint = Vector2.new(0.5, 0.5)
+logo.Position = UDim2.fromScale(0.5, 0.5)
+logo.Size = UDim2.fromOffset(26, 26)
+logo.BackgroundTransparency = 1
+logo.Image = CONFIG.LogoAsset
+logo.ImageTransparency = 0
+logo.ScaleType = Enum.ScaleType.Fit
+logo.ImageColor3 = Color3.fromRGB(255, 255, 255)
+logo.Parent = badge
+
+local rows = Instance.new("Frame")
+rows.Name = "Rows"
+rows.LayoutOrder = 1
+rows.AutomaticSize = Enum.AutomaticSize.X
+rows.Size = UDim2.fromOffset(0, BADGE_SIZE)
+rows.BackgroundTransparency = 1
+rows.Parent = holder
+
+local rowsLayout = Instance.new("UIListLayout")
+rowsLayout.FillDirection = Enum.FillDirection.Vertical
+rowsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+rowsLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+rowsLayout.Padding = UDim.new(0, 6)
+rowsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+rowsLayout.Parent = rows
+
+local pillRecords: { PillRecord } = {}
+
+local function registerPill(row: Frame, pill: Frame, icon: Instance?, value: Instance?)
+	table.insert(pillRecords, {
+		row = row,
+		pill = pill,
+		icon = icon,
+		value = value,
+	})
+end
+
+local function createRow(name: string, order: number): Frame
+	local row = Instance.new("Frame")
+	row.Name = name
+	row.LayoutOrder = order
+	row.AutomaticSize = Enum.AutomaticSize.X
+	row.Size = UDim2.fromOffset(0, PILL_HEIGHT)
+	row.BackgroundTransparency = 1
+	row.Parent = rows
+
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+	layout.VerticalAlignment = Enum.VerticalAlignment.Center
+	layout.Padding = UDim.new(0, 5)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = row
+
+	return row
+end
+
+local function stylePill(pill: Frame, accented: boolean?): UIStroke
+	pill.BackgroundColor3 = if accented then Color3.fromRGB(70, 50, 140) else Color3.fromRGB(24, 24, 29)
+	pill.BorderSizePixel = 0
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(1, 0)
+	corner.Parent = pill
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = if accented then CONFIG.Accent else Color3.fromRGB(255, 255, 255)
+	stroke.Transparency = if accented then 0.3 else 0.85
+	stroke.Thickness = 1
+	stroke.Parent = pill
+
+	local gradient = Instance.new("UIGradient")
+	gradient.Color = if accented
+		then ColorSequence.new(Color3.fromRGB(122, 90, 214), Color3.fromRGB(44, 29, 88))
+		else ColorSequence.new(Color3.fromRGB(54, 54, 64), Color3.fromRGB(14, 14, 19))
+	gradient.Rotation = 90
+	gradient.Parent = pill
+
+	return stroke
+end
+
+local mouse = player:GetMouse()
+local defaultCursor = mouse.Icon
+local POINTING_CURSOR = "rbxasset://SystemCursors/PointingHand"
+
+local function attachHover(target: GuiObject, stroke: UIStroke, baseTransparency: number, hoverTransparency: number)
+	local active: Tween? = nil
+
+	target.MouseEnter:Connect(function()
+		if active then
+			active:Cancel()
+		end
+		active = TweenService:Create(stroke, TweenInfo.new(0.18, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+			Transparency = hoverTransparency,
+		})
+		active:Play()
+		mouse.Icon = POINTING_CURSOR
+	end)
+
+	target.MouseLeave:Connect(function()
+		if active then
+			active:Cancel()
+		end
+		active = TweenService:Create(stroke, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+			Transparency = baseTransparency,
+		})
+		active:Play()
+		mouse.Icon = defaultCursor
+	end)
+end
+
+local function copyToClipboard(text: string)
+	local env = getfenv()
+	local fn = env.setclipboard or env.set_clipboard or env.toclipboard or env.writeclipboard
+	if typeof(fn) == "function" then
+		pcall(fn, text)
+	end
+end
+
+local function makeFilmIcon(color: Color3): Frame
+	local icon = Instance.new("Frame")
+	icon.Size = UDim2.fromOffset(14, 14)
+	icon.BackgroundTransparency = 1
+
+	local body = Instance.new("Frame")
+	body.AnchorPoint = Vector2.new(0.5, 0.5)
+	body.Position = UDim2.fromScale(0.5, 0.5)
+	body.Size = UDim2.fromOffset(13, 9)
+	body.BackgroundTransparency = 1
+
+	local bodyCorner = Instance.new("UICorner")
+	bodyCorner.CornerRadius = UDim.new(0, 2)
+	bodyCorner.Parent = body
+
+	local bodyStroke = Instance.new("UIStroke")
+	bodyStroke.Color = color
+	bodyStroke.Thickness = 1.2
+	bodyStroke.Parent = body
+
+	body.Parent = icon
+
+	for _, x in { 3.2, 9.8 } do
+		local divider = Instance.new("Frame")
+		divider.Position = UDim2.fromOffset(x, 0)
+		divider.Size = UDim2.fromOffset(1.2, 9)
+		divider.BackgroundColor3 = color
+		divider.BorderSizePixel = 0
+		divider.Parent = body
+	end
+
+	return icon
+end
+
+local function makeSignalIcon(color: Color3): Frame
+	local icon = Instance.new("Frame")
+	icon.Size = UDim2.fromOffset(14, 14)
+	icon.BackgroundTransparency = 1
+
+	local heights = { 4, 6.5, 9, 12 }
+	for i, h in heights do
+		local bar = Instance.new("Frame")
+		bar.AnchorPoint = Vector2.new(0, 1)
+		bar.Position = UDim2.new(0, (i - 1) * 3.4 + 0.5, 1, -0.5)
+		bar.Size = UDim2.fromOffset(2.2, h)
+		bar.BackgroundColor3 = color
+		bar.BorderSizePixel = 0
+
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 1)
+		corner.Parent = bar
+
+		bar.Parent = icon
+	end
+
+	return icon
+end
+
+local function makeCrosshairIcon(color: Color3): Frame
+	local icon = Instance.new("Frame")
+	icon.Size = UDim2.fromOffset(14, 14)
+	icon.BackgroundTransparency = 1
+
+	local circle = Instance.new("Frame")
+	circle.AnchorPoint = Vector2.new(0.5, 0.5)
+	circle.Position = UDim2.fromScale(0.5, 0.5)
+	circle.Size = UDim2.fromOffset(8, 8)
+	circle.BackgroundTransparency = 1
+
+	local circleCorner = Instance.new("UICorner")
+	circleCorner.CornerRadius = UDim.new(0.5, 0)
+	circleCorner.Parent = circle
+
+	local circleStroke = Instance.new("UIStroke")
+	circleStroke.Color = color
+	circleStroke.Thickness = 1.3
+	circleStroke.Parent = circle
+
+	circle.Parent = icon
+
+	local dot = Instance.new("Frame")
+	dot.AnchorPoint = Vector2.new(0.5, 0.5)
+	dot.Position = UDim2.fromScale(0.5, 0.5)
+	dot.Size = UDim2.fromOffset(2, 2)
+	dot.BackgroundColor3 = color
+	dot.BorderSizePixel = 0
+
+	local dotCorner = Instance.new("UICorner")
+	dotCorner.CornerRadius = UDim.new(0.5, 0)
+	dotCorner.Parent = dot
+
+	dot.Parent = icon
+
+	local tickDefs = {
+		{ UDim2.new(0.5, 0, 0, 0.5), Vector2.new(0.5, 0), UDim2.fromOffset(1.3, 2.5) },
+		{ UDim2.new(0.5, 0, 1, -0.5), Vector2.new(0.5, 1), UDim2.fromOffset(1.3, 2.5) },
+		{ UDim2.new(0, 0.5, 0.5, 0), Vector2.new(0, 0.5), UDim2.fromOffset(2.5, 1.3) },
+		{ UDim2.new(1, -0.5, 0.5, 0), Vector2.new(1, 0.5), UDim2.fromOffset(2.5, 1.3) },
+	}
+	for _, def in tickDefs do
+		local tick = Instance.new("Frame")
+		tick.Position = def[1]
+		tick.AnchorPoint = def[2]
+		tick.Size = def[3]
+		tick.BackgroundColor3 = color
+		tick.BorderSizePixel = 0
+		tick.Parent = icon
+	end
+
+	return icon
+end
+
+local function glyphIcon(glyph: string): IconBuilder
+	return function(color: Color3): Frame
+		local container = Instance.new("Frame")
+		container.Size = UDim2.fromOffset(14, 14)
+		container.BackgroundTransparency = 1
+
+		local label = Instance.new("TextLabel")
+		label.AnchorPoint = Vector2.new(0.5, 0.5)
+		label.Position = UDim2.fromScale(0.5, 0.5)
+		label.AutomaticSize = Enum.AutomaticSize.X
+		label.Size = UDim2.fromOffset(0, 14)
+		label.BackgroundTransparency = 1
+		label.Font = Enum.Font.BuilderSansBold
+		label.Text = glyph
+		label.TextSize = 14
+		label.TextColor3 = color
+		label.Parent = container
+
+		return container
+	end
+end
+
+local function makeBetaPill(row: Frame): Frame
+	local pill = Instance.new("Frame")
+	pill.Name = "Channel"
+	pill.AutomaticSize = Enum.AutomaticSize.X
+	pill.Size = UDim2.fromOffset(0, PILL_HEIGHT)
+	local stroke = stylePill(pill, true)
+	pill.Parent = row
+
+	local padding = Instance.new("UIPadding")
+	padding.PaddingLeft = UDim.new(0, 11)
+	padding.PaddingRight = UDim.new(0, 12)
+	padding.Parent = pill
+
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+	layout.VerticalAlignment = Enum.VerticalAlignment.Center
+	layout.Padding = UDim.new(0, 2)
+	layout.Parent = pill
+
+	local label = Instance.new("TextLabel")
+	label.Name = "Value"
+	label.AutomaticSize = Enum.AutomaticSize.X
+	label.Size = UDim2.fromOffset(0, PILL_HEIGHT)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.BuilderSansBold
+	label.Text = CONFIG.Channel
+	label.TextSize = 16
+	label.TextColor3 = Color3.fromRGB(255, 255, 255)
+	label.Parent = pill
+
+	attachHover(pill, stroke, 0.3, 0.05)
+	registerPill(row, pill, nil, nil)
+
+	return pill
+end
+
+local function makeTextPill(
+	row: Frame,
+	name: string,
+	buildIcon: IconBuilder?,
+	valueText: string,
+	accented: boolean?
+): (Frame, TextLabel)
+	local pill = Instance.new("Frame")
+	pill.Name = name
+	pill.AutomaticSize = Enum.AutomaticSize.X
+	pill.Size = UDim2.fromOffset(0, PILL_HEIGHT)
+	local stroke = stylePill(pill, accented)
+	pill.Parent = row
+
+	local padding = Instance.new("UIPadding")
+	padding.PaddingLeft = UDim.new(0, 9)
+	padding.PaddingRight = UDim.new(0, 10)
+	padding.Parent = pill
+
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+	layout.VerticalAlignment = Enum.VerticalAlignment.Center
+	layout.Padding = UDim.new(0, 5)
+	layout.Parent = pill
+
+	local iconColor = if accented then Color3.fromRGB(255, 255, 255) else CONFIG.Accent
+
+	local iconFrame: Instance? = nil
+	if buildIcon ~= nil then
+		iconFrame = buildIcon(iconColor)
+		iconFrame.Name = "Icon"
+		iconFrame.LayoutOrder = 1
+		iconFrame.Parent = pill
+	end
+
+	local value = Instance.new("TextLabel")
+	value.Name = "Value"
+	value.LayoutOrder = 2
+	value.AutomaticSize = Enum.AutomaticSize.X
+	value.Size = UDim2.fromOffset(0, PILL_HEIGHT)
+	value.BackgroundTransparency = 1
+	value.Font = Enum.Font.BuilderSansBold
+	value.Text = valueText
+	value.TextSize = 13
+	value.TextColor3 = Color3.fromRGB(246, 246, 250)
+	value.Parent = pill
+
+	if accented then
+		attachHover(pill, stroke, 0.3, 0.05)
+	else
+		attachHover(pill, stroke, 0.85, 0.25)
+	end
+
+	pill.InputBegan:Connect(function(input: InputObject)
+		if input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.UserInputType == Enum.UserInputType.Touch then
+			copyToClipboard(value.Text)
+		end
+	end)
+
+	registerPill(row, pill, iconFrame, value)
+
+	return pill, value
+end
+
+local topRow = createRow("TopRow", 1)
+local bottomRow = createRow("BottomRow", 2)
+
+makeBetaPill(topRow)
+local _, fpsLabel = makeTextPill(topRow, "FPS", makeFilmIcon, "60 FPS", false)
+local _, pingLabel = makeTextPill(topRow, "Ping", makeSignalIcon, "0 ms", false)
+
+local coordsPill, coordsLabel = makeTextPill(bottomRow, "Coordinates", makeCrosshairIcon, "0, 0, 0", false)
+local bandwidthPill, bandwidthLabel = makeTextPill(bottomRow, "Bandwidth", glyphIcon("⇄"), "0.0 KB/s", false)
+
+coordsPill.Visible = CONFIG.ShowCoordinates
+bandwidthPill.Visible = CONFIG.ShowBandwidth
+
+badge.MouseEnter:Connect(function()
+	TweenService:Create(logo, TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+		Size = UDim2.fromOffset(LOGO_SIZE + 3, LOGO_SIZE + 3),
+	}):Play()
+	mouse.Icon = POINTING_CURSOR
+end)
+
+badge.MouseLeave:Connect(function()
+	TweenService:Create(logo, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+		Size = UDim2.fromOffset(LOGO_SIZE, LOGO_SIZE),
+	}):Play()
+	mouse.Icon = defaultCursor
+end)
+
+badge.InputBegan:Connect(function(input: InputObject)
+	if input.UserInputType == Enum.UserInputType.MouseButton1
+		or input.UserInputType == Enum.UserInputType.Touch then
+		local up = TweenService:Create(badgeScale, TweenInfo.new(0.11, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Scale = 1.08,
+		})
+		up.Completed:Connect(function()
+			TweenService:Create(badgeScale, TweenInfo.new(0.26, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+				Scale = 1,
+			}):Play()
+		end)
+		up:Play()
+	end
+end)
+
+local dragging = false
+local followTarget = false
+local dragTarget = holderRest
+local tiltCurrent = 0
+local tiltTarget = 0
+
+local function clampedPosition(pos: UDim2): UDim2
+	local cam = workspace.CurrentCamera
+	if not cam then
+		return pos
+	end
+	local viewport = cam.ViewportSize
+	local size = holder.AbsoluteSize * scale.Scale
+	local margin = CONFIG.EdgeMargin
+	return UDim2.fromOffset(
+		math.clamp(pos.X.Offset, margin, math.max(margin, viewport.X - size.X - margin)),
+		math.clamp(pos.Y.Offset, margin, math.max(margin, viewport.Y - size.Y - margin))
+	)
+end
+
+local function clampHolder()
+	local pos = holder.Position
+	local clamped = clampedPosition(pos)
+	if clamped ~= pos then
+		holder.Position = clamped
+	end
+end
+
+if CONFIG.Draggable then
+	local dragStart = Vector2.zero
+	local startPosition = holder.Position
+	local activeInput: InputObject? = nil
+
+	holder.Active = true
+
+	holder.InputBegan:Connect(function(input: InputObject)
+		if input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
+			followTarget = false
+			activeInput = input
+			dragStart = input.Position
+			startPosition = holder.Position
+			dragTarget = startPosition
+			TweenService:Create(scale, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+				Scale = CONFIG.Scale * 1.05,
+			}):Play()
+		end
+	end)
+
+	holder.InputEnded:Connect(function(input: InputObject)
+		if input == activeInput then
+			dragging = false
+			followTarget = true
+			activeInput = nil
+			TweenService:Create(scale, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+				Scale = CONFIG.Scale,
+			}):Play()
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(input: InputObject)
+		if not dragging then
+			return
+		end
+		if input.UserInputType ~= Enum.UserInputType.MouseMovement
+			and input.UserInputType ~= Enum.UserInputType.Touch then
+			return
+		end
+		local delta = input.Position - dragStart
+		dragTarget = clampedPosition(UDim2.new(
+			startPosition.X.Scale,
+			startPosition.X.Offset + delta.X,
+			startPosition.Y.Scale,
+			startPosition.Y.Offset + delta.Y
+		))
+	end)
+end
+
+local frames = 0
+local fps = 60
+local lastFpsUpdate = os.clock()
+local bandwidth = 0
+
+local function getPing(): number
+	local ok, value = pcall(function()
+		return Stats.Network.ServerStatsItem["Data Ping"]:GetValue()
+	end)
+	return if ok and typeof(value) == "number" then math.floor(value + 0.5) else 0
+end
+
+local function getBandwidth(): number
+	local ok, value = pcall(function()
+		return Stats.DataReceiveKbps
+	end)
+	return if ok and typeof(value) == "number" then math.max(0, value) else 0
+end
+
+local currentSide = 0
+
+local function applySide(side: number)
+	if side == currentSide then
+		return
+	end
+	currentSide = side
+	local mirrored = side == 2
+
+	badge.LayoutOrder = if mirrored then 1 else 0
+	rows.LayoutOrder = if mirrored then 0 else 1
+
+	local rowCounts: { [Frame]: number } = {}
+	for _, record in pillRecords do
+		rowCounts[record.row] = (rowCounts[record.row] or 0) + 1
+	end
+
+	local rowIndexes: { [Frame]: number } = {}
+	for _, record in pillRecords do
+		local row = record.row
+		local idx = rowIndexes[row] or 0
+		rowIndexes[row] = idx + 1
+		record.pill.LayoutOrder = if mirrored then rowCounts[row] - 1 - idx else idx
+		if record.icon ~= nil then
+			record.icon.LayoutOrder = if mirrored then 2 else 1
+		end
+		if record.value ~= nil then
+			record.value.LayoutOrder = if mirrored then 1 else 2
+		end
+	end
+end
+
+local function updateSide()
+	local cam = workspace.CurrentCamera
+	if not cam then
+		return
+	end
+	local viewport = cam.ViewportSize
+	local size = holder.AbsoluteSize * scale.Scale
+	local centerX = holder.AbsolutePosition.X + size.X / 2
+	local mid = viewport.X / 2
+	if currentSide == 0 then
+		applySide(if centerX < mid then 1 else 2)
+	elseif currentSide == 1 and centerX > mid + SIDE_HYSTERESIS then
+		applySide(2)
+	elseif currentSide == 2 and centerX < mid - SIDE_HYSTERESIS then
+		applySide(1)
+	end
+end
+
+local appear = TweenService:Create(holder, TweenInfo.new(0.65, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+	GroupTransparency = 0,
+	Position = holderRest,
+})
+local pop = TweenService:Create(scale, TweenInfo.new(0.9, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+	Scale = CONFIG.Scale,
+})
+local logoPop = TweenService:Create(logo, TweenInfo.new(0.85, Enum.EasingStyle.Back, Enum.EasingDirection.Out, 0, false, 0.22), {
+	Size = UDim2.fromOffset(LOGO_SIZE, LOGO_SIZE),
+})
+
+appear.Completed:Connect(clampHolder)
+appear:Play()
+pop:Play()
+logoPop:Play()
+
+RunService.RenderStepped:Connect(function(step: number)
+	frames += 1
+	local now = os.clock()
+
+	if now - lastFpsUpdate >= 0.75 then
+		fps = math.floor(frames / (now - lastFpsUpdate) + 0.5)
+		frames = 0
+		lastFpsUpdate = now
+		bandwidth = getBandwidth()
+	end
+
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if root and root:IsA("BasePart") then
+		local p = root.Position
+		coordsLabel.Text = string.format("%.0f, %.0f, %.0f", p.X, p.Y, p.Z)
+	else
+		coordsLabel.Text = "—, —, —"
+	end
+
+	fpsLabel.Text = string.format("%d FPS", fps)
+	pingLabel.Text = string.format("%d ms", getPing())
+	bandwidthLabel.Text = string.format("%.1f KB/s", bandwidth)
+
+	local before = holder.Position
+	local dist = math.max(
+		math.abs(dragTarget.X.Offset - before.X.Offset),
+		math.abs(dragTarget.Y.Offset - before.Y.Offset)
+	)
+
+	if dragging or (followTarget and dist > 0.5) then
+		local a = math.min(1, step * 16)
+		local nx = before.X.Offset + (dragTarget.X.Offset - before.X.Offset) * a
+		local ny = before.Y.Offset + (dragTarget.Y.Offset - before.Y.Offset) * a
+		holder.Position = UDim2.fromOffset(nx, ny)
+		if dragging then
+			local velocity = (nx - before.X.Offset) / math.max(step, 1e-4)
+			tiltTarget = math.clamp(velocity * 0.004, -5, 5)
+		end
+		if followTarget and dist <= 0.5 then
+			followTarget = false
+		end
+	else
+		followTarget = false
+		tiltTarget = 0
+	end
+
+	if not dragging then
+		tiltTarget = 0
+	end
+
+	tiltCurrent += (tiltTarget - tiltCurrent) * math.min(1, step * 10)
+	if tiltTarget == 0 and math.abs(tiltCurrent) < 0.01 then
+		tiltCurrent = 0
+	end
+	holder.Rotation = tiltCurrent
+
+	updateSide()
+	clampHolder()
+end)
