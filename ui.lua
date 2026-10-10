@@ -2991,166 +2991,224 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 
 			local Lastone;
 			for i,Value in next , Config.Values do
-				local ItemFrame = Instance.new("Frame")
-				local ItemLabel = Instance.new("TextLabel")
-				local UICorner = Instance.new("UICorner")
-
-				ItemFrame.Name = NeverLose.RandomString();
-				ItemFrame.Parent = DropdownLib.RootItem
-				ItemFrame.BackgroundColor3 = Color3.fromRGB(29, 31, 38)
-				ItemFrame.BackgroundTransparency = 1.000
-				ItemFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
-				ItemFrame.BorderSizePixel = 0
-				ItemFrame.Size = UDim2.new(1, 0, 0, 25)
-				ItemFrame.ZIndex = ZINdex + 1258
-
-				ItemLabel.Name = NeverLose.RandomString();
-				ItemLabel.Parent = ItemFrame
-				ItemLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-				ItemLabel.BackgroundTransparency = 1.000
-				ItemLabel.BorderColor3 = Color3.fromRGB(0, 0, 0)
-				ItemLabel.BorderSizePixel = 0
-				ItemLabel.Position = UDim2.new(0, 15, 0, 4)
-				ItemLabel.Size = UDim2.new(0,1, 0, 15)
-				ItemLabel.ZIndex = ZINdex + 1258
-				ItemLabel.Font = Enum.Font.Gotham
-				ItemLabel.Text = tostring(Value);
-				ItemLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-				ItemLabel.TextSize = 13.000
-				ItemLabel.TextTransparency = 0.200
-				ItemLabel.TextXAlignment = Enum.TextXAlignment.Left
-
-				UICorner.CornerRadius = UDim.new(0, 10)
-				UICorner.Parent = ItemFrame
-				local sizetext = TextService:GetTextSize(ItemLabel.Text , ItemLabel.TextSize,ItemLabel.Font,Vector2.new(math.huge,math.huge));
-
-				DropdownLib.ExtentSize = math.max(DropdownLib.ExtentSize , sizetext.X);
-
-				local MIcon , MarkItem = nil , nil;
-
-				if Config.Multi then
-					local Icon = Instance.new("TextLabel")
-
-					Icon.Parent = ItemFrame;
-					Icon.AnchorPoint = Vector2.new(0, 0.5)
-					Icon.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-					Icon.BackgroundTransparency = 1.000
-					Icon.BorderColor3 = Color3.fromRGB(0, 0, 0)
-					Icon.BorderSizePixel = 0
-					Icon.Position = UDim2.new(0, 5, 0.5, 0)
-					Icon.Size = UDim2.new(0, 20, 0, 20)
-					Icon.ZIndex = ZINdex + 1259
-					Icon.FontFace = NeverLose.BuiltInBold;
-					Icon.Text = "check"
-					Icon.TextColor3 = Color3.fromRGB(223, 223, 223)
-					Icon.TextSize = 18.000
-					Icon.TextTransparency = 1
-					Icon.TextWrapped = true;
-
-					local VisiblewOfMult = LPH_NO_VIRTUALIZE(function()
-						if DropdownLib.IsMatch(Value) then
-							NeverLose.PlayAnimate(ItemLabel , VSlowTween , {
-								TextTransparency = 0.200,
-								Position = UDim2.new(0, 30, 0, 4)
-							})
-
-							NeverLose.PlayAnimate(Icon , vs , {
-								TextTransparency = 0.250
-							})
-
-							Lastone = ItemLabel;
-						else
-
-							NeverLose.PlayAnimate(Icon , SlowyTween , {
-								TextTransparency = 1
-							})
-
-							NeverLose.PlayAnimate(ItemLabel , VSlowTween , {
-								TextTransparency = 0.5,
-								Position = UDim2.new(0, 15, 0, 4)
-							})
-						end;
-					end);
-
-					MIcon = Icon;
-					MarkItem = VisiblewOfMult;
-				else
-					local DefaultVisible = LPH_NO_VIRTUALIZE(function()
-						if DropdownLib.IsMatch(Value) then
-							NeverLose.PlayAnimate(ItemLabel , SlowyTween , {
-								TextTransparency = 0.200
-							})
-
-							Lastone = ItemLabel;
-						else
-							NeverLose.PlayAnimate(ItemLabel , SlowyTween , {
-								TextTransparency = 0.5
-							})
-						end;
-					end);
-
-					MarkItem = DefaultVisible;
-				end;
-
-				MarkItem();
-
-				table.insert(DropdownLib.Refuse , MarkItem)
-
-				table.insert(DropdownLib.Signals,ItemFrame.MouseEnter:Connect(LPH_NO_VIRTUALIZE(function()
-					NeverLose.PlayAnimate(ItemFrame , SlowyTween , {
-						BackgroundTransparency = 0.1
-					})
-				end)));
-
-				table.insert(DropdownLib.Signals,ItemFrame.MouseLeave:Connect(LPH_NO_VIRTUALIZE(function()
-					NeverLose.PlayAnimate(ItemFrame , SlowyTween , {
-						BackgroundTransparency = 1
-					})
-				end)));
-
-				table.insert(DropdownLib.Signals , DropdownLib.OpenSignal:Connect(LPH_NO_VIRTUALIZE(function(val)
-					if val then
-						MarkItem();
+				local isSec = (typeof(Value) == "table" and (Value.Section ~= nil or Value.Divider == true))
+				if isSec then
+					local SecFrame = Instance.new("Frame")
+					SecFrame.Name = NeverLose.RandomString();
+					SecFrame.Parent = DropdownLib.RootItem
+					SecFrame.BackgroundTransparency = 1.000
+					SecFrame.BorderSizePixel = 0
+					if Value.Divider then
+						SecFrame.Size = UDim2.new(1, 0, 0, 9)
 					else
-						NeverLose.PlayAnimate(ItemLabel , SlowyTween , {
-							TextTransparency = 1
-						})
+						SecFrame.Size = UDim2.new(1, 0, 0, 20)
+					end;
+					SecFrame.ZIndex = ZINdex + 1258
+					if Value.Divider then
+						local Div = Instance.new("Frame")
+						Div.Name = NeverLose.RandomString();
+						Div.Parent = SecFrame
+						Div.AnchorPoint = Vector2.new(0, 0.5)
+						Div.BackgroundColor3 = Color3.fromRGB(45, 48, 58)
+						Div.BackgroundTransparency = 1.000
+						Div.BorderSizePixel = 0
+						Div.Position = UDim2.new(0, 15, 0.5, 0)
+						Div.Size = UDim2.new(1, -30, 0, 1)
+						Div.ZIndex = ZINdex + 1258
+						table.insert(DropdownLib.Signals, DropdownLib.OpenSignal:Connect(LPH_NO_VIRTUALIZE(function(val)
+							if val then
+								NeverLose.PlayAnimate(Div, SlowyTween, { BackgroundTransparency = 0 })
+							else
+								NeverLose.PlayAnimate(Div, SlowyTween, { BackgroundTransparency = 1 })
+							end;
+						end)));
+					else
+						local SecLabel = Instance.new("TextLabel")
+						SecLabel.Name = NeverLose.RandomString();
+						SecLabel.Parent = SecFrame
+						SecLabel.BackgroundTransparency = 1.000
+						SecLabel.BorderSizePixel = 0
+						SecLabel.Position = UDim2.new(0, 15, 0, 2)
+						SecLabel.Size = UDim2.new(1, -20, 0, 16)
+						SecLabel.ZIndex = ZINdex + 1258
+						SecLabel.Font = Enum.Font.GothamBold
+						SecLabel.Text = tostring(Value.Section);
+						SecLabel.TextColor3 = Color3.fromRGB(140, 150, 175)
+						SecLabel.TextSize = 11.000
+						SecLabel.TextTransparency = 1.000
+						SecLabel.TextXAlignment = Enum.TextXAlignment.Left
+						local secsize = TextService:GetTextSize(SecLabel.Text, SecLabel.TextSize, SecLabel.Font, Vector2.new(math.huge, math.huge));
+						DropdownLib.ExtentSize = math.max(DropdownLib.ExtentSize, secsize.X);
+						table.insert(DropdownLib.Signals, DropdownLib.OpenSignal:Connect(LPH_NO_VIRTUALIZE(function(val)
+							if val then
+								NeverLose.PlayAnimate(SecLabel, SlowyTween, { TextTransparency = 0.200 })
+							else
+								NeverLose.PlayAnimate(SecLabel, SlowyTween, { TextTransparency = 1 })
+							end;
+						end)));
+					end;
+				else
+					local ItemFrame = Instance.new("Frame")
+					local ItemLabel = Instance.new("TextLabel")
+					local UICorner = Instance.new("UICorner")
 
-						if MIcon then
-							NeverLose.PlayAnimate(MIcon , SlowyTween , {
+					ItemFrame.Name = NeverLose.RandomString();
+					ItemFrame.Parent = DropdownLib.RootItem
+					ItemFrame.BackgroundColor3 = Color3.fromRGB(29, 31, 38)
+					ItemFrame.BackgroundTransparency = 1.000
+					ItemFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
+					ItemFrame.BorderSizePixel = 0
+					ItemFrame.Size = UDim2.new(1, 0, 0, 25)
+					ItemFrame.ZIndex = ZINdex + 1258
+
+					ItemLabel.Name = NeverLose.RandomString();
+					ItemLabel.Parent = ItemFrame
+					ItemLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+					ItemLabel.BackgroundTransparency = 1.000
+					ItemLabel.BorderColor3 = Color3.fromRGB(0, 0, 0)
+					ItemLabel.BorderSizePixel = 0
+					ItemLabel.Position = UDim2.new(0, 15, 0, 4)
+					ItemLabel.Size = UDim2.new(0,1, 0, 15)
+					ItemLabel.ZIndex = ZINdex + 1258
+					ItemLabel.Font = Enum.Font.Gotham
+					ItemLabel.Text = tostring(Value);
+					ItemLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+					ItemLabel.TextSize = 13.000
+					ItemLabel.TextTransparency = 0.200
+					ItemLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+					UICorner.CornerRadius = UDim.new(0, 10)
+					UICorner.Parent = ItemFrame
+					local sizetext = TextService:GetTextSize(ItemLabel.Text , ItemLabel.TextSize,ItemLabel.Font,Vector2.new(math.huge,math.huge));
+
+					DropdownLib.ExtentSize = math.max(DropdownLib.ExtentSize , sizetext.X);
+
+					local MIcon , MarkItem = nil , nil;
+
+					if Config.Multi then
+						local Icon = Instance.new("TextLabel")
+
+						Icon.Parent = ItemFrame;
+						Icon.AnchorPoint = Vector2.new(0, 0.5)
+						Icon.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+						Icon.BackgroundTransparency = 1.000
+						Icon.BorderColor3 = Color3.fromRGB(0, 0, 0)
+						Icon.BorderSizePixel = 0
+						Icon.Position = UDim2.new(0, 5, 0.5, 0)
+						Icon.Size = UDim2.new(0, 20, 0, 20)
+						Icon.ZIndex = ZINdex + 1259
+						Icon.FontFace = NeverLose.BuiltInBold;
+						Icon.Text = "check"
+						Icon.TextColor3 = Color3.fromRGB(223, 223, 223)
+						Icon.TextSize = 18.000
+						Icon.TextTransparency = 1
+						Icon.TextWrapped = true;
+
+						local VisiblewOfMult = LPH_NO_VIRTUALIZE(function()
+							if DropdownLib.IsMatch(Value) then
+								NeverLose.PlayAnimate(ItemLabel , VSlowTween , {
+									TextTransparency = 0.200,
+									Position = UDim2.new(0, 30, 0, 4)
+								})
+
+								NeverLose.PlayAnimate(Icon , vs , {
+									TextTransparency = 0.250
+								})
+
+								Lastone = ItemLabel;
+							else
+
+								NeverLose.PlayAnimate(Icon , SlowyTween , {
+									TextTransparency = 1
+								})
+
+								NeverLose.PlayAnimate(ItemLabel , VSlowTween , {
+									TextTransparency = 0.5,
+									Position = UDim2.new(0, 15, 0, 4)
+								})
+							end;
+						end);
+
+						MIcon = Icon;
+						MarkItem = VisiblewOfMult;
+					else
+						local DefaultVisible = LPH_NO_VIRTUALIZE(function()
+							if DropdownLib.IsMatch(Value) then
+								NeverLose.PlayAnimate(ItemLabel , SlowyTween , {
+									TextTransparency = 0.200
+								})
+
+								Lastone = ItemLabel;
+							else
+								NeverLose.PlayAnimate(ItemLabel , SlowyTween , {
+									TextTransparency = 0.5
+								})
+							end;
+						end);
+
+						MarkItem = DefaultVisible;
+					end;
+
+					MarkItem();
+
+					table.insert(DropdownLib.Refuse , MarkItem)
+
+					table.insert(DropdownLib.Signals,ItemFrame.MouseEnter:Connect(LPH_NO_VIRTUALIZE(function()
+						NeverLose.PlayAnimate(ItemFrame , SlowyTween , {
+							BackgroundTransparency = 0.1
+						})
+					end)));
+
+					table.insert(DropdownLib.Signals,ItemFrame.MouseLeave:Connect(LPH_NO_VIRTUALIZE(function()
+						NeverLose.PlayAnimate(ItemFrame , SlowyTween , {
+							BackgroundTransparency = 1
+						})
+					end)));
+
+					table.insert(DropdownLib.Signals , DropdownLib.OpenSignal:Connect(LPH_NO_VIRTUALIZE(function(val)
+						if val then
+							MarkItem();
+						else
+							NeverLose.PlayAnimate(ItemLabel , SlowyTween , {
 								TextTransparency = 1
 							})
+
+							if MIcon then
+								NeverLose.PlayAnimate(MIcon , SlowyTween , {
+									TextTransparency = 1
+								})
+							end;
 						end;
+					end)));
+
+					if Config.Multi then
+						local _,bth_signal = NeverLose:CreateInput(ItemFrame , LPH_NO_VIRTUALIZE(function()
+							Config.Default[Value] = not Config.Default[Value];
+
+							MarkItem();
+
+							BasedLabel.Text = NeverLose.ParseDropdown(Config.Default);
+
+							Config.Callback(Config.Default);
+						end));
+
+						table.insert(DropdownLib.Signals , bth_signal);
+					else
+						local _,bth_signal = NeverLose:CreateInput(ItemFrame , LPH_NO_VIRTUALIZE(function()
+							Config.Default = Value;
+
+							for i,v in next , DropdownLib.Refuse do
+								task.spawn(v);
+							end;
+
+							BasedLabel.Text = NeverLose.ParseDropdown(Config.Default);
+
+							Config.Callback(Config.Default);
+						end));
+
+						table.insert(DropdownLib.Signals , bth_signal);
 					end;
-				end)));
-
-				if Config.Multi then
-					local _,bth_signal = NeverLose:CreateInput(ItemFrame , LPH_NO_VIRTUALIZE(function()
-						Config.Default[Value] = not Config.Default[Value];
-
-						MarkItem();
-
-						BasedLabel.Text = NeverLose.ParseDropdown(Config.Default);
-
-						Config.Callback(Config.Default);
-					end));
-
-					table.insert(DropdownLib.Signals , bth_signal);
-				else
-					local _,bth_signal = NeverLose:CreateInput(ItemFrame , LPH_NO_VIRTUALIZE(function()
-						Config.Default = Value;
-
-						for i,v in next , DropdownLib.Refuse do
-							task.spawn(v);
-						end;
-
-						BasedLabel.Text = NeverLose.ParseDropdown(Config.Default);
-
-						Config.Callback(Config.Default);
-					end));
-
-					table.insert(DropdownLib.Signals , bth_signal);
-				end;
+				end
 			end;
 		end;
 
