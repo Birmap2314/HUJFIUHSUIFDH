@@ -2999,9 +2999,9 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 					SecFrame.BackgroundTransparency = 1.000
 					SecFrame.BorderSizePixel = 0
 					if Value.Divider then
-						SecFrame.Size = UDim2.new(1, 0, 0, 9)
+						SecFrame.Size = UDim2.new(1, 0, 0, 7)
 					else
-						SecFrame.Size = UDim2.new(1, 0, 0, 20)
+						SecFrame.Size = UDim2.new(1, 0, 0, 14)
 					end;
 					SecFrame.ZIndex = ZINdex + 1258
 					if Value.Divider then
@@ -3009,11 +3009,15 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 						Div.Name = NeverLose.RandomString();
 						Div.Parent = SecFrame
 						Div.AnchorPoint = Vector2.new(0, 0.5)
-						Div.BackgroundColor3 = Color3.fromRGB(45, 48, 58)
+						Div.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 						Div.BackgroundTransparency = 1.000
 						Div.BorderSizePixel = 0
 						Div.Position = UDim2.new(0, 15, 0.5, 0)
 						Div.Size = UDim2.new(1, -30, 0, 1)
+						local DivGrad = Instance.new("UIGradient")
+						DivGrad.Color = ColorSequence.new(Color3.fromRGB(105, 115, 140))
+						DivGrad.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.22, 0), NumberSequenceKeypoint.new(0.78, 0), NumberSequenceKeypoint.new(1, 1)})
+						DivGrad.Parent = Div
 						Div.ZIndex = ZINdex + 1258
 						table.insert(DropdownLib.Signals, DropdownLib.OpenSignal:Connect(LPH_NO_VIRTUALIZE(function(val)
 							if val then
@@ -3028,22 +3032,38 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 						SecLabel.Parent = SecFrame
 						SecLabel.BackgroundTransparency = 1.000
 						SecLabel.BorderSizePixel = 0
-						SecLabel.Position = UDim2.new(0, 15, 0, 2)
-						SecLabel.Size = UDim2.new(1, -20, 0, 16)
+						SecLabel.Position = UDim2.new(0, 15, 0, 0)
+						SecLabel.Size = UDim2.new(1, -20, 0, 10)
 						SecLabel.ZIndex = ZINdex + 1258
 						SecLabel.Font = Enum.Font.GothamBold
 						SecLabel.Text = tostring(Value.Section);
 						SecLabel.TextColor3 = Color3.fromRGB(140, 150, 175)
-						SecLabel.TextSize = 11.000
+						SecLabel.TextSize = 9.000
 						SecLabel.TextTransparency = 1.000
 						SecLabel.TextXAlignment = Enum.TextXAlignment.Left
+						local SecLine = Instance.new("Frame")
+						SecLine.Name = NeverLose.RandomString();
+						SecLine.Parent = SecFrame
+						SecLine.AnchorPoint = Vector2.new(0, 1)
+						SecLine.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+						SecLine.BackgroundTransparency = 1.000
+						SecLine.BorderSizePixel = 0
+						SecLine.Position = UDim2.new(0, 15, 1, -1)
+						SecLine.Size = UDim2.new(1, -30, 0, 1)
+						SecLine.ZIndex = ZINdex + 1258
+						local SecGrad = Instance.new("UIGradient")
+						SecGrad.Color = ColorSequence.new(Color3.fromRGB(105, 115, 140))
+						SecGrad.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.22, 0), NumberSequenceKeypoint.new(0.78, 0), NumberSequenceKeypoint.new(1, 1)})
+						SecGrad.Parent = SecLine
 						local secsize = TextService:GetTextSize(SecLabel.Text, SecLabel.TextSize, SecLabel.Font, Vector2.new(math.huge, math.huge));
 						DropdownLib.ExtentSize = math.max(DropdownLib.ExtentSize, secsize.X);
 						table.insert(DropdownLib.Signals, DropdownLib.OpenSignal:Connect(LPH_NO_VIRTUALIZE(function(val)
 							if val then
 								NeverLose.PlayAnimate(SecLabel, SlowyTween, { TextTransparency = 0.200 })
+								NeverLose.PlayAnimate(SecLine, SlowyTween, { BackgroundTransparency = 0 })
 							else
 								NeverLose.PlayAnimate(SecLabel, SlowyTween, { TextTransparency = 1 })
+								NeverLose.PlayAnimate(SecLine, SlowyTween, { BackgroundTransparency = 1 })
 							end;
 						end)));
 					end;
