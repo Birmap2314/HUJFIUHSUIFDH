@@ -3040,7 +3040,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 						SecLabel.TextColor3 = Color3.fromRGB(140, 150, 175)
 						SecLabel.TextSize = 9.000
 						SecLabel.TextTransparency = 1.000
-						SecLabel.TextXAlignment = Enum.TextXAlignment.Left
+						SecLabel.TextXAlignment = Enum.TextXAlignment.Center
 						local SecLine = Instance.new("Frame")
 						SecLine.Name = NeverLose.RandomString();
 						SecLine.Parent = SecFrame
